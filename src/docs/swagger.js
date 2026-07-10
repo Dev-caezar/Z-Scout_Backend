@@ -1,7 +1,13 @@
 import swaggerJsdoc from "swagger-jsdoc";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
+
+// Fix for ES Modules (__dirname replacement)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 5000;
 const HOSTED_URL = process.env.HOSTED_URL;
@@ -44,10 +50,13 @@ const options = {
     ],
   },
 
-  apis: ["./src/routes/*.js"],
+  // Use absolute path so it works on both Windows and Render
+  apis: [path.join(__dirname, "../routes/*.js")],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
+
+// Debug
 console.log("Swagger Paths:", swaggerSpec.paths);
 
 export default swaggerSpec;
