@@ -48,5 +48,6 @@ const options = {
 };
 
 const swaggerSpec = swaggerJsdoc(options);
+console.log("Swagger Paths:", swaggerSpec.paths);
 
 export default swaggerSpec;
