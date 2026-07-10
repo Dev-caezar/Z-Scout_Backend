@@ -14,14 +14,6 @@ const app = express();
 // Security
 app.use(helmet());
 
-// CORS
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL,
-    credentials: true,
-  }),
-);
-
 // Logging
 app.use(morgan("dev"));
 
