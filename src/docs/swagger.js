@@ -5,7 +5,6 @@ import { fileURLToPath } from "url";
 
 dotenv.config();
 
-// Fix for ES Modules (__dirname replacement)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
