@@ -49,14 +49,9 @@ const options = {
       },
     ],
   },
-
-  // Use absolute path so it works on both Windows and Render
-  apis: [path.join(__dirname, "../routes/*.js")],
+  apis: ["src/routes/*.js"],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
-
-// Debug
-console.log("Swagger Paths:", swaggerSpec.paths);
 
 export default swaggerSpec;
