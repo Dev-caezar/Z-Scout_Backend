@@ -114,7 +114,7 @@ export const register = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Internal server error.",
+      message: error?.message || "Internal server error occurred.",
     });
   }
 };
@@ -181,7 +181,7 @@ export const verifyEmail = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong.",
+      message: error?.message || "Internal server error occurred.",
     });
   }
 };
@@ -250,7 +250,7 @@ export const resendOtp = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong.",
+      message: error?.message || "Internal server error occurred.",
     });
   }
 };
@@ -326,10 +326,10 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Login Error:", error);
+    console.error("Login Controller Error:", error);
     return res.status(500).json({
       success: false,
-      message: "Something went wrong.",
+      message: error?.message || "Internal server error occurred.",
     });
   }
 };
@@ -382,7 +382,7 @@ export const forgotPassword = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong.",
+      message: error?.message || "Internal server error occurred.",
     });
   }
 };
@@ -448,7 +448,7 @@ export const verifyResetOtp = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong.",
+      message: error?.message || "Internal server error occurred.",
     });
   }
 };
@@ -512,7 +512,7 @@ export const resendResetOtp = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong.",
+      message: error?.message || "Internal server error occurred.",
     });
   }
 };
@@ -581,7 +581,7 @@ export const resetPassword = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong.",
+      message: error?.message || "Internal server error occurred.",
     });
   }
 };
