@@ -1,9 +1,13 @@
 import { Router } from "express";
 import {
+  forgotPassword,
   login,
   register,
   resendOtp,
+  resendResetOtp,
+  resetPassword,
   verifyEmail,
+  verifyResetOtp,
 } from "../controllers/auth.controller.js";
 
 const router = Router();
@@ -221,5 +225,285 @@ router.post("/resend-otp", resendOtp);
  *         description: Internal server error
  */
 router.post("/login", login);
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Send password reset OTP
+ *     description: Sends a one-time password (OTP) to the user's registered email address for password reset.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: christian@example.com
+ *     responses:
+ *       200:
+ *         description: Password reset OTP sent successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Password reset OTP has been sent to your email.
+ *
+ *       400:
+ *         description: Invalid or missing email address.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Please provide a valid email address.
+ *
+ *       404:
+ *         description: User not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: User not found.
+ *
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Something went wrong.
+ */
+router.post("/forgot-password", forgotPassword);
+
+/**
+ * @swagger
+ * /auth/verify-reset-otp:
+ *   post:
+ *     summary: Verify password reset OTP
+ *     description: Verifies the OTP sent to the user's email before allowing them to reset their password.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: christian@example.com
+ *               otp:
+ *                 type: string
+ *                 example: "123456"
+ *     responses:
+ *       200:
+ *         description: OTP verified successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: OTP verified successfully.
+ *
+ *       400:
+ *         description: Invalid request, invalid OTP, or expired OTP.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: OTP has expired. Please request a new one.
+ *
+ *       404:
+ *         description: User not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: User not found.
+ *
+ *       500:
+ *         description: Internal server error.
+ */
+router.post("/verify-reset-otp", verifyResetOtp);
+
+/**
+ * @swagger
+ * /auth/resend-reset-otp:
+ *   post:
+ *     summary: Resend password reset OTP
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: christian@example.com
+ *     responses:
+ *       200:
+ *         description: Password reset OTP sent successfully
+ *       400:
+ *         description: Invalid request
+ *       404:
+ *         description: User not found
+ *       429:
+ *         description: Too many requests
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/resend-reset-otp", resendResetOtp);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Reset user password
+ *     description: Resets the user's password after a successful OTP verification.
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - confirmPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: christian@example.com
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: NewPassword123@
+ *               confirmPassword:
+ *                 type: string
+ *                 format: password
+ *                 example: NewPassword123@
+ *     responses:
+ *       200:
+ *         description: Password reset successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Password reset successfully.
+ *
+ *       400:
+ *         description: Missing fields or passwords do not match.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Passwords do not match.
+ *
+ *       403:
+ *         description: OTP has not been verified.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Please verify your OTP first.
+ *
+ *       404:
+ *         description: User not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: User not found.
+ *
+ *       500:
+ *         description: Internal server error.
+ */
+router.post("/reset-password", resetPassword);
 
 export default router;

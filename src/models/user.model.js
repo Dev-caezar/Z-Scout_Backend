@@ -48,12 +48,24 @@ const userSchema = new mongoose.Schema(
     verificationOTPExpires: {
       type: Date,
     },
+    passwordResetOTP: {
+      type: String,
+    },
+
+    passwordResetOTPExpires: {
+      type: Date,
+    },
 
     lastOtpSentAt: {
       type: Date,
     },
 
     isVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    isPasswordResetVerified: {
       type: Boolean,
       default: false,
     },
