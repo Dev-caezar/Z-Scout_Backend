@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema(
+const scoutSchema = new mongoose.Schema(
   {
     firstName: {
       type: String,
@@ -89,4 +89,4 @@ const userSchema = new mongoose.Schema(
   },
 );
 
-export const User = mongoose.model("User", userSchema);
+export const scoutModel = mongoose.model("scouts", scoutSchema);

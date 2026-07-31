@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import validator from "validator";
-import { User } from "../models/user.model.js";
+import { playerModel } from "../models/player/player.model.js";
+import { scoutModel } from "../models/scout/scout.model.js";
 import { hashPassword } from "../utils/hashPassword.js";
 import { generateOTP } from "../utils/generateOtp.js";
 import { sendOtpEmail } from "../service/otpService.js";
@@ -8,6 +9,8 @@ import { comparePassword } from "../utils/comparePassword.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
 
 export const register = async (req, res) => {
+  let user;
+
   try {
     const { firstName, lastName, email, password, role } = req.body;
 
@@ -53,43 +56,60 @@ export const register = async (req, res) => {
     }
 
     // Check existing user
-    const existingUser = await User.findOne({
-      email: normalizedEmail,
-    });
+    const [player, scout] = await Promise.all([
+      playerModel.findOne({ email: normalizedEmail }),
+      scoutModel.findOne({ email: normalizedEmail }),
+    ]);
 
-    if (existingUser) {
+    if (player || scout) {
       return res.status(409).json({
         success: false,
-        message: "An account with this email already exists.",
+        message: "Account with this email already exists as a player or scout.",
       });
     }
 
     // Hash password
-    const hashedPassword = await hashPassword(password);
+    const hashed = await hashPassword(password);
 
     // Generate OTP
     const otp = generateOTP();
     const hashedOTP = await bcrypt.hash(otp, 10);
 
     // Create user
-    const user = await User.create({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: normalizedEmail,
-      password: hashedPassword,
-      role,
 
-      verificationOTP: hashedOTP,
-      verificationOTPExpires: new Date(Date.now() + 10 * 60 * 1000),
-
-      lastVerificationOtpSentAt: new Date(),
-    });
+    if (role === "player") {
+      user = await playerModel.create({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: normalizedEmail,
+        password: hashed,
+        role,
+        verificationOTP: hashedOTP,
+        verificationOTPExpires: new Date(Date.now() + 10 * 60 * 1000),
+        lastVerificationOtpSentAt: new Date(),
+      });
+    } else if (role === "scout") {
+      user = await scoutModel.create({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: normalizedEmail,
+        password: hashed,
+        role,
+        verificationOTP: hashedOTP,
+        verificationOTPExpires: new Date(Date.now() + 10 * 60 * 1000),
+        lastVerificationOtpSentAt: new Date(),
+      });
+    }
 
     // Send verification email
     try {
       await sendOtpEmail(user.email, otp, "verify");
     } catch (error) {
-      await User.findByIdAndDelete(user._id);
+      if (user.role === "player") {
+        await playerModel.findByIdAndDelete(user._id);
+      } else if (user.role === "scout") {
+        await scoutModel.findByIdAndDelete(user._id);
+      }
 
       return res.status(500).json({
         success: false,
@@ -130,7 +150,11 @@ export const verifyEmail = async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: normalizedEmail });
+    const [player, scout] = await Promise.all([
+      playerModel.findOne({ email: normalizedEmail }),
+      scoutModel.findOne({ email: normalizedEmail }),
+    ]);
+    const user = player ?? scout;
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -205,9 +229,11 @@ export const resendOtp = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({
-      email: normalizedEmail,
-    });
+    const [player, scout] = await Promise.all([
+      playerModel.findOne({ email: normalizedEmail }),
+      scoutModel.findOne({ email: normalizedEmail }),
+    ]);
+    const user = player ?? scout;
 
     if (!user) {
       return res.status(404).json({
@@ -274,9 +300,11 @@ export const login = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({
-      email: normalizedEmail,
-    });
+    const [player, scout] = await Promise.all([
+      playerModel.findOne({ email: normalizedEmail }),
+      scoutModel.findOne({ email: normalizedEmail }),
+    ]);
+    const user = player ?? scout;
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -354,7 +382,11 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email: normalizedEmail });
+    const [player, scout] = await Promise.all([
+      playerModel.findOne({ email: normalizedEmail }),
+      scoutModel.findOne({ email: normalizedEmail }),
+    ]);
+    const user = player ?? scout;
 
     if (!user) {
       return res.status(404).json({
@@ -407,7 +439,11 @@ export const verifyResetOtp = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email: normalizedEmail });
+    const [player, scout] = await Promise.all([
+      playerModel.findOne({ email: normalizedEmail }),
+      scoutModel.findOne({ email: normalizedEmail }),
+    ]);
+    const user = player ?? scout;
 
     if (!user) {
       return res.status(404).json({
@@ -466,7 +502,11 @@ export const resendResetOtp = async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    const user = await User.findOne({ email: normalizedEmail });
+    const [player, scout] = await Promise.all([
+      playerModel.findOne({ email: normalizedEmail }),
+      scoutModel.findOne({ email: normalizedEmail }),
+    ]);
+    const user = player ?? scout;
 
     if (!user) {
       return res.status(404).json({
@@ -544,9 +584,11 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({
-      email: normalizedEmail,
-    });
+    const [player, scout] = await Promise.all([
+      playerModel.findOne({ email: normalizedEmail }),
+      scoutModel.findOne({ email: normalizedEmail }),
+    ]);
+    const user = player ?? scout;
 
     if (!user) {
       return res.status(404).json({
@@ -562,9 +604,9 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    const hashedPassword = await hashPassword(password);
+    const hashed = await hashPassword(password);
 
-    user.password = hashedPassword;
+    user.password = hashed;
 
     user.passwordResetOTP = undefined;
     user.passwordResetOTPExpires = undefined;

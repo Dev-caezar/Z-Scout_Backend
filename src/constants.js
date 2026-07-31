@@ -1,1 +1,51 @@
 export const DB_NAME = "Z-Scout";
+export const POSITIONS = [
+  "Goalkeeper",
+  "Centre Back",
+  "Right Back",
+  "Left Back",
+  "Defensive Midfielder",
+  "Central Midfielder",
+  "Attacking Midfielder",
+  "Right Winger",
+  "Left Winger",
+  "Striker",
+];
+
+export const requiredFields = [
+  "dateOfBirth",
+  "gender",
+  "nationality",
+  "state",
+  "city",
+  "phoneNumber",
+  "primaryPosition",
+  "preferredFoot",
+  "height",
+  "weight",
+];
+
+export const allowedFields = [
+  "profileImage",
+  "coverImage",
+  "bio",
+  "dateOfBirth",
+  "gender",
+  "nationality",
+  "state",
+  "city",
+  "phoneNumber",
+  "primaryPosition",
+  "secondaryPosition",
+  "preferredFoot",
+  "currentClubOrAcademy",
+  "jerseyNumber",
+  "height",
+  "weight",
+  "footballBio",
+  "isAvailableForTrials",
+  "willingToRelocate",
+  "coach",
+  "medicalInformation",
+  "socialLinks",
+];
