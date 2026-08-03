@@ -1,13 +1,18 @@
-import { requiredFields, allowedFields } from "../constants.js";
+import {
+  requiredFields,
+  allowedFields,
+  MAX_VIDEOS_PER_PLAYER,
+  SENSITIVE_FIELDS,
+  NESTED_FIELDS,
+  VALID_STATUSES,
+} from "../constants.js";
 import { playerModel } from "../models/player/player.model.js";
 import { profileModel } from "../models/player/profile.model.js";
 import cloudinary from "../config/cloudinary.js"; // ✅
 import streamifier from "streamifier";
 import { uploadToCloudinary } from "../utils/uploadToCloudnary.js";
-
-const NESTED_FIELDS = ["coach", "medicalInformation", "socialLinks"];
-const SENSITIVE_FIELDS =
-  "-password -refreshToken -verificationOTP -verificationOTPExpires -passwordResetOTP -passwordResetOTPExpires";
+import { videoModel } from "../models/player/video.model.js";
+import { success } from "zod";
 
 export const completeProfile = async (req, res) => {
   try {
@@ -258,6 +263,229 @@ export const uploadPlayerImages = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error occurred.",
+    });
+  }
+};
+
+export const uploadPlayerVideo = async (req, res) => {
+  try {
+    const playerId = req.user.id;
+
+    const profile = await profileModel.findOne({ user: playerId });
+
+    if (!profile) {
+      return res.status(404).json({
+        success: false,
+        message: "Profile not found.",
+      });
+    }
+
+    if (profile.profileStatus !== "approved") {
+      return res.status(403).json({
+        success: false,
+        message: "Your profile must be approved before uploading videos.",
+      });
+    }
+
+    // multer (uploadVideo.single("video")) attaches the file here
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: "Please upload a video file.",
+      });
+    }
+
+    const { title, description } = req.body;
+
+    if (!title || typeof title !== "string" || title.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "title is required.",
+      });
+    }
+
+    if (MAX_VIDEOS_PER_PLAYER !== null) {
+      const existingCount = await videoModel.countDocuments({
+        player: playerId,
+        isDeleted: false,
+      });
+
+      if (existingCount >= MAX_VIDEOS_PER_PLAYER) {
+        return res.status(400).json({
+          success: false,
+          message: `You can only have up to ${MAX_VIDEOS_PER_PLAYER} videos. Delete an existing video before uploading a new one.`,
+        });
+      }
+    }
+
+    const uploaded = await uploadToCloudinary(
+      file.buffer,
+      "zscouts/player-videos",
+      "video",
+    );
+
+    const video = await videoModel.create({
+      player: playerId,
+      uploadedBy: playerId,
+      title: title.trim(),
+      description: description?.trim() || "",
+      videoUrl: uploaded.secure_url,
+      publicId: uploaded.public_id,
+      thumbnailUrl: uploaded.secure_url.replace(/\.[^/.]+$/, ".jpg"), // Cloudinary auto-generated video thumbnail
+      duration: uploaded.duration || 0,
+      status: "pending",
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Video uploaded successfully and is awaiting review.",
+      data: video,
+    });
+  } catch (error) {
+    console.error("Upload Video Error:", error);
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: Object.values(error.errors)
+          .map((err) => err.message)
+          .join(", "),
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error occurred.",
+    });
+  }
+};
+
+export const getPlayerVideos = async (req, res) => {
+  try {
+    const playerId = req.user.id;
+    const { status } = req.query;
+
+    if (status !== undefined && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status filter. Must be one of: ${VALID_STATUSES.join(", ")}.`,
+      });
+    }
+
+    const filter = { player: playerId, isDeleted: false };
+    if (status) filter.status = status;
+
+    const videos = await videoModel
+      .find({ player: playerId, isDeleted: false })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: videos,
+    });
+  } catch (error) {
+    console.error("Get Player Videos Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error occurred.",
+    });
+  }
+};
+
+export const updatePlayerVideo = async (req, res) => {
+  try {
+    const playerId = req.user.id;
+    const { videoId } = req.params;
+
+    const video = await videoModel.findOne({
+      _id: videoId,
+      player: playerId,
+      isDeleted: false,
+    });
+
+    if (!video) {
+      return res.status(404).json({
+        success: false,
+        message: "Video not found.",
+      });
+    }
+
+    // Prevent edits once approved — same policy as the profile flow
+    if (video.status === "approved") {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This video has already been approved and can no longer be edited.",
+      });
+    }
+
+    const unknownFields = Object.keys(req.body).filter(
+      (field) => !["title", "description"].includes(field),
+    );
+
+    if (unknownFields.length) {
+      return res.status(400).json({
+        success: false,
+        message: `Unknown field(s): ${unknownFields.join(", ")}`,
+      });
+    }
+
+    const { title, description } = req.body;
+
+    if (title !== undefined) {
+      if (typeof title !== "string" || title.trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: "title cannot be empty.",
+        });
+      }
+      video.title = title.trim();
+    }
+
+    if (description !== undefined) {
+      video.description =
+        typeof description === "string" ? description.trim() : "";
+    }
+
+    // Any edit resets the video back into the review queue and clears
+    // prior rejection state — mirrors completeProfile's resubmission logic
+    video.status = "pending";
+    video.reviewedBy = undefined;
+    video.reviewedAt = undefined;
+    video.rejectionReason = "";
+
+    await video.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Video updated successfully and is awaiting review.",
+      data: video,
+    });
+  } catch (error) {
+    console.error("Update Video Error:", error);
+
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: Object.values(error.errors)
+          .map((err) => err.message)
+          .join(", "),
+      });
+    }
+
+    if (error.name === "CastError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid video ID.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error occurred.",
     });
   }
 };

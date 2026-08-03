@@ -1,17 +1,20 @@
 import cloudinary from "../config/cloudinary.js";
 import streamifier from "streamifier";
 
-export const uploadToCloudinary = (buffer, folder) => {
+/**
+ * Uploads a buffer to Cloudinary.
+ *
+ * @param {Buffer} buffer - File buffer (from multer memoryStorage)
+ * @param {string} folder - Cloudinary folder path
+ * @param {"image"|"video"} resourceType - defaults to "image" to stay
+ *   backward-compatible with existing calls in uploadPlayerImages
+ */
+export const uploadToCloudinary = (buffer, folder, resourceType = "image") => {
   return new Promise((resolve, reject) => {
-    console.log({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET ? "Loaded" : "Missing",
-    });
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder,
-        resource_type: "image",
+        resource_type: resourceType,
       },
       (error, result) => {
         if (error) return reject(error);

@@ -49,3 +49,10 @@ export const allowedFields = [
   "medicalInformation",
   "socialLinks",
 ];
+
+export const MAX_VIDEOS_PER_PLAYER = 10;
+
+export const NESTED_FIELDS = ["coach", "medicalInformation", "socialLinks"];
+export const SENSITIVE_FIELDS =
+  "-password -refreshToken -verificationOTP -verificationOTPExpires -passwordResetOTP -passwordResetOTPExpires";
+export const VALID_STATUSES = ["pending", "approved", "rejected"];
