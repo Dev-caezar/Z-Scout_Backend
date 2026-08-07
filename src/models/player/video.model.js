@@ -76,6 +76,11 @@ const videoSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    viewedBy: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "scouts",
+      default: [],
+    },
 
     isDeleted: {
       type: Boolean,

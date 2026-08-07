@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { POSITIONS } from "../../constants.js";
 
-const playerSchema = new mongoose.Schema(
+const playerProfileSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -211,4 +211,4 @@ const playerSchema = new mongoose.Schema(
   },
 );
 
-export const profileModel = mongoose.model("profiles", playerSchema);
+export const profileModel = mongoose.model("profiles", playerProfileSchema);
