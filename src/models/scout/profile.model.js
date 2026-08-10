@@ -21,7 +21,7 @@ const scoutProfileSchema = new mongoose.Schema(
       default: "",
     },
 
-    // --- Identity & credibility ---
+    // Identity & credibility
     isIndependent: {
       type: Boolean,
       required: true,
@@ -31,44 +31,39 @@ const scoutProfileSchema = new mongoose.Schema(
     organizationName: {
       type: String,
       trim: true,
-      // Only required if they're NOT independent
-      required: function () {
-        return this.isIndependent === false;
-      },
       default: "",
     },
 
     title: {
       type: String,
       trim: true,
-      // e.g. "Head Scout", "Regional Scout", "Freelance Scout"
-      required: true,
+      default: "",
     },
 
     yearsOfExperience: {
       type: Number,
       min: 0,
       max: 60,
-      required: true,
+      default: null,
     },
 
-    // --- Location & coverage ---
+    // Location & coverage
     nationality: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     state: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     city: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
 
     regionsCovered: {
@@ -76,29 +71,26 @@ const scoutProfileSchema = new mongoose.Schema(
       default: [],
     },
 
-    // --- Contact ---
+    // Contact
     phoneNumber: {
       type: String,
-      required: true,
       trim: true,
       match: [/^\+?[1-9]\d{7,14}$/, "Invalid phone number"],
+      default: "",
     },
 
-    // --- Verification ---
+    // Verification
     proofOfAffiliation: {
       url: {
         type: String,
         default: "",
-        required: function () {
-          return this.isIndependent === false;
-        },
       },
-      publicId: { type: String, default: "" },
+      publicId: {
+        type: String,
+        default: "",
+      },
     },
 
-    // Optional for everyone, but especially useful for independent scouts
-    // with no org badge to lean on — a LinkedIn profile, personal site,
-    // or a reference letter/portfolio link.
     referenceLink: {
       type: String,
       trim: true,
@@ -111,7 +103,6 @@ const scoutProfileSchema = new mongoose.Schema(
       default: "",
     },
 
-    // --- Review workflow (same pattern as player profiles) ---
     profileStatus: {
       type: String,
       enum: ["draft", "incomplete", "submitted", "approved", "rejected"],
