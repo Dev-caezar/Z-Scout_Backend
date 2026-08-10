@@ -56,3 +56,27 @@ export const NESTED_FIELDS = ["coach", "medicalInformation", "socialLinks"];
 export const SENSITIVE_FIELDS =
   "-password -refreshToken -verificationOTP -verificationOTPExpires -passwordResetOTP -passwordResetOTPExpires";
 export const VALID_STATUSES = ["pending", "approved", "rejected"];
+
+export const SCOUT_ALLOWED_FIELDS = [
+  "isIndependent",
+  "organizationName",
+  "title",
+  "yearsOfExperience",
+  "bio",
+  "nationality",
+  "state",
+  "city",
+  "regionsCovered",
+  "phoneNumber",
+  "referenceLink",
+  "linkedIn",
+];
+
+export const SCOUT_REQUIRED_FIELDS = [
+  "title",
+  "yearsOfExperience",
+  "nationality",
+  "state",
+  "city",
+  "phoneNumber",
+];

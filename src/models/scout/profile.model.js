@@ -86,12 +86,14 @@ const scoutProfileSchema = new mongoose.Schema(
 
     // --- Verification ---
     proofOfAffiliation: {
-      url: { type: String, default: "" },
-      publicId: { type: String, default: "" },
-      // Required only when representing an organization
-      required: function () {
-        return this.isIndependent === false;
+      url: {
+        type: String,
+        default: "",
+        required: function () {
+          return this.isIndependent === false;
+        },
       },
+      publicId: { type: String, default: "" },
     },
 
     // Optional for everyone, but especially useful for independent scouts

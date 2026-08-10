@@ -7,6 +7,7 @@ import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./docs/swagger.js";
 import authRouter from "./routes/auth.routes.js";
 import playerRouter from "./routes/player.routes.js";
+import scoutRouter from "./routes/scout.routes.js"
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/player", playerRouter);
+app.use("/api/v1/scout", scoutRouter);
 
 app.use((req, res) => {
   res.status(404).json({
