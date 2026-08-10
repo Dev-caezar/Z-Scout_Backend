@@ -146,7 +146,7 @@ export const uploadProofOfAffiliation = async (req, res) => {
     try {
         const scoutId = req.user.id;
 
-        const scoutProfile = await scoutProfileModel.findOne({ user: scoutId });
+        let scoutProfile = await scoutProfileModel.findOne({ user: scoutId });
 
         if (!scoutProfile) {
             scoutProfile = new scoutProfileModel({
@@ -196,6 +196,7 @@ export const uploadProofOfAffiliation = async (req, res) => {
         };
 
         await scoutProfile.save();
+        
 
         return res.status(200).json({
             success: true,

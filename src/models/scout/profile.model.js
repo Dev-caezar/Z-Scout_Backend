@@ -114,7 +114,7 @@ const scoutProfileSchema = new mongoose.Schema(
     // --- Review workflow (same pattern as player profiles) ---
     profileStatus: {
       type: String,
-      enum: ["draft", "submitted", "approved", "rejected"],
+      enum: ["draft", "incomplete", "submitted", "approved", "rejected"],
       default: "draft",
     },
 
