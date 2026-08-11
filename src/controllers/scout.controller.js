@@ -195,8 +195,7 @@ export const uploadProofOfAffiliation = async (req, res) => {
             publicId: uploaded.public_id,
         };
 
-        await scoutProfile.save();
-        
+        await scoutProfile.save({validateBeforeSave: false});
 
         return res.status(200).json({
             success: true,
