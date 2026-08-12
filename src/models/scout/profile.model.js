@@ -21,7 +21,6 @@ const scoutProfileSchema = new mongoose.Schema(
       default: "",
     },
 
-    // --- Identity & credibility ---
     isIndependent: {
       type: Boolean,
       required: true,
@@ -31,7 +30,6 @@ const scoutProfileSchema = new mongoose.Schema(
     organizationName: {
       type: String,
       trim: true,
-      // Only required if they're NOT independent
       required: function () {
         return this.isIndependent === false;
       },
@@ -41,7 +39,6 @@ const scoutProfileSchema = new mongoose.Schema(
     title: {
       type: String,
       trim: true,
-      // e.g. "Head Scout", "Regional Scout", "Freelance Scout"
       required: true,
     },
 
@@ -52,7 +49,6 @@ const scoutProfileSchema = new mongoose.Schema(
       required: true,
     },
 
-    // --- Location & coverage ---
     nationality: {
       type: String,
       required: true,
@@ -76,7 +72,6 @@ const scoutProfileSchema = new mongoose.Schema(
       default: [],
     },
 
-    // --- Contact ---
     phoneNumber: {
       type: String,
       required: true,
@@ -84,7 +79,6 @@ const scoutProfileSchema = new mongoose.Schema(
       match: [/^\+?[1-9]\d{7,14}$/, "Invalid phone number"],
     },
 
-    // --- Verification ---
     proofOfAffiliation: {
       url: {
         type: String,
@@ -96,9 +90,15 @@ const scoutProfileSchema = new mongoose.Schema(
       publicId: { type: String, default: "" },
     },
 
-    // Optional for everyone, but especially useful for independent scouts
-    // with no org badge to lean on — a LinkedIn profile, personal site,
-    // or a reference letter/portfolio link.
+    ageGroupsOfInterest: {
+      type: [String],
+      default: []
+    },
+    positionsOfInterest: {
+      type: [String],
+      default: []
+    },
+
     referenceLink: {
       type: String,
       trim: true,
@@ -111,7 +111,6 @@ const scoutProfileSchema = new mongoose.Schema(
       default: "",
     },
 
-    // --- Review workflow (same pattern as player profiles) ---
     profileStatus: {
       type: String,
       enum: ["draft", "submitted", "approved", "rejected"],

@@ -195,7 +195,7 @@ export const uploadProofOfAffiliation = async (req, res) => {
             publicId: uploaded.public_id,
         };
 
-        await scoutProfile.save({validateBeforeSave: false});
+        await scoutProfile.save({ validateBeforeSave: false });
 
         return res.status(200).json({
             success: true,
@@ -265,3 +265,71 @@ export const getScoutProfile = async (req, res) => {
         });
     }
 };
+
+export const updateScoutingInterest = async (req, res) => {
+    try {
+        const scoutId = req.user.id;
+
+        const scoutProfile = await scoutProfileModel.findOne({ user: scoutId })
+        if (!scoutProfile) {
+            return res.status(404).json({
+                success: false,
+                message: "Profile not found. Complete your profile first"
+            })
+        }
+
+        const { ageGroupsOfInterest, positionsOfInterest } = req.body
+
+        const unknownFields = Object.keys(req.body).filter((field) => !["ageGroupsOfInterest", "positionsOfInterest"].includes(field))
+
+        if (unknownFields.length) {
+            return res.status(400).json({
+                success: false,
+                message: `Unknown field(s): ${unknownFields.join(", ")}`,
+            });
+        }
+
+        if (ageGroupsOfInterest !== undefined && !Array.isArray(ageGroupsOfInterest) || positionsOfInterest !==undefined && !Array.isArray(positionsOfInterest)) {
+            return res.status(400).json({
+                success: false,
+                message: "ageGroupsOfInterest and positionsOfInterest must be an array of strings"
+            })
+        }
+
+        if (ageGroupsOfInterest !== undefined) {
+            scoutProfile.ageGroupsOfInterest = ageGroupsOfInterest
+        }
+
+        if (positionsOfInterest !== undefined) {
+            scoutProfile.positionsOfInterest = positionsOfInterest
+        }
+
+        await scoutProfile.save()
+
+        return res.status(200).json({
+            success: true,
+            message: "Scouting interests updated sucessfully",
+            data: {
+                ageGroupsOfInterest: scoutProfile.ageGroupsOfInterest,
+                positionsOfInterest: scoutProfile.positionsOfInterest
+            }
+        })
+
+
+    } catch (error) {
+        console.log("update scouting interests error:", error);
+
+        if (error.name === "ValidationError") {
+            return res.status(400).json({
+                success: false,
+                message: Object.values(error.errors).map((err) => err.message).join(", ")
+
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error occurred"
+        })
+    }
+}

@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { protect } from "../middleware/auth.middleware.js";
 import { uploadDocument } from "../middleware/upload-document.middleware.js";
-import { completeScoutProfile, uploadProofOfAffiliation, getScoutProfile } from "../controllers/scout.controller.js";
+import { completeScoutProfile, uploadProofOfAffiliation, getScoutProfile, updateScoutingInterest } from "../controllers/scout.controller.js";
 
 const router = Router();
 
@@ -361,5 +361,84 @@ router.patch(
   },
   uploadProofOfAffiliation,
 );
+
+/**
+ * @swagger
+ * /scout/profile/interests:
+ *   patch:
+ *     tags:
+ *       - Scout Profile
+ *     summary: Update scouting interests
+ *     description: >
+ *       Updates the authenticated scout's age-group and position interests.
+ *       Unlike PATCH /scout/profile, this endpoint does NOT change
+ *       profileStatus, reviewedBy, reviewedAt, or rejectionReason —
+ *       interests are freely editable at any time, independent of
+ *       approval status, since a scout's focus is expected to change
+ *       over their career (e.g. starting with U17 only, later expanding
+ *       to all age groups).
+ *
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           example:
+ *             ageGroupsOfInterest: ["U17", "U20"]
+ *             positionsOfInterest: ["Striker", "Winger"]
+ *
+ *     responses:
+ *       200:
+ *         description: Scouting interests updated.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               message: "Scouting interests updated."
+ *               data:
+ *                 ageGroupsOfInterest: ["U17", "U20"]
+ *                 positionsOfInterest: ["Striker", "Winger"]
+ *
+ *       400:
+ *         description: Unknown field(s), or a field sent in the wrong shape.
+ *         content:
+ *           application/json:
+ *             examples:
+ *               unknownField:
+ *                 value:
+ *                   success: false
+ *                   message: "Unknown field(s): favoritePosition"
+ *               wrongShape:
+ *                 value:
+ *                   success: false
+ *                   message: "ageGroupsOfInterest must be an array of strings."
+ *
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Unauthorized."
+ *
+ *       404:
+ *         description: Profile not found — complete the profile first.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Profile not found. Complete your profile first."
+ *
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Internal server error occurred."
+ */
+router.patch("/profile/interests", protect, updateScoutingInterest);
 
 export default router;
