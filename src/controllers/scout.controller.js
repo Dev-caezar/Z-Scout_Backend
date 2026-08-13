@@ -1,4 +1,5 @@
-import { SCOUT_ALLOWED_FIELDS, SCOUT_REQUIRED_FIELDS, SENSITIVE_FIELDS } from "../constants.js";
+import { SCOUT_ALLOWED_FIELDS, SCOUT_REQUIRED_FIELDS, SENSITIVE_FIELDS, escapeRegex, AGE_GROUP_RANGES } from "../constants.js";
+import { profileModel } from "../models/player/profile.model.js";
 import { scoutProfileModel } from "../models/scout/profile.model.js";
 import { scoutModel } from "../models/scout/scout.model.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudnary.js";
@@ -289,7 +290,7 @@ export const updateScoutingInterest = async (req, res) => {
             });
         }
 
-        if (ageGroupsOfInterest !== undefined && !Array.isArray(ageGroupsOfInterest) || positionsOfInterest !==undefined && !Array.isArray(positionsOfInterest)) {
+        if (ageGroupsOfInterest !== undefined && !Array.isArray(ageGroupsOfInterest) || positionsOfInterest !== undefined && !Array.isArray(positionsOfInterest)) {
             return res.status(400).json({
                 success: false,
                 message: "ageGroupsOfInterest and positionsOfInterest must be an array of strings"
@@ -330,6 +331,147 @@ export const updateScoutingInterest = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Internal server error occurred"
+        })
+    }
+}
+
+export const browsePlayers = async (req, res) => {
+    try {
+        const { search, positions, ageGroups, nationality, availableForTrialsOnly, page = 1, limit = 12 } = req.query;
+
+        const pageNum = Math.max(parseInt(page) || 1, 1);
+        const limitNum = Math.min(Math.max(parseInt(limit) || 12, 1), 50);
+
+        const matchStage = {
+            profileStatus: "approved",
+            visibility: "public"
+        }
+
+        if (positions) {
+            const positionList = positions.split(",").map((p) => p.trim()).filter(Boolean)
+
+            if (positionList.length > 0) {
+                matchStage.$or = [
+                    { primaryPosition: { $in: positionList } },
+                    { secondaryPosition: { $in: positionList } }
+                ]
+            }
+        }
+
+        if (nationality) {
+            matchStage.nationality = {
+                $regex: escapeRegex(nationality.trim()),
+                $options: "i"
+            }
+        }
+
+        if (availableForTrialsOnly === "true") {
+            matchStage.isAvailableForTrials = true
+        }
+
+        const pipeline = [
+            { $match: matchStage },
+
+            {
+                $addFields: {
+                    age: {
+                        $dateDiff: {
+                            startDate: "$dateOfBirth",
+                            endDate: "$$NOW",
+                            unit: "year"
+                        }
+                    }
+                }
+            }
+        ]
+
+        if (ageGroups) {
+            const ageGroupList = ageGroups.split(",").map((a) => a.trim()).filter((a) => AGE_GROUP_RANGES[a])
+
+            if (ageGroupList.length > 0) {
+                const ageConditions = ageGroupList.map((group) => {
+                    const { min, max } = AGE_GROUP_RANGES[group]
+                    return { age: { $gte: min, $lte: max } }
+                })
+                pipeline.push({ $match: { $or: ageConditions } })
+            }
+        }
+
+        pipeline.push(
+            {
+                $lookup: {
+                    from: "players",
+                    localField: "user",
+                    foreignField: "_id",
+                    as: "player"
+                }
+            },
+            {$unwind: "$player"}
+        )
+
+        if (search) {
+            pipeline.push({
+                $match: {
+                    $or: [
+                        {"player.firstName": {$regex: escapeRegex(search.trim()), $options: "i"}},
+                        {"player.lastName": {$regex: escapeRegex(search.trim()), $options: "i"}}
+                    ]
+                }
+            })
+        }
+
+        pipeline.push({
+            $project: {
+                _id: 1,
+                firstName: "$player.firstName",
+                lastName: "$player.lastName",
+                profileImage: 1,
+                primaryPosition: 1,
+                secondaryPosition: 1,
+                age: 1,
+                nationality: 1,
+                state: 1,
+                city: 1,
+                currentClubOrAcademy: 1,
+                isAvailableForTrials: 1,
+                willingToRelocate: 1
+            }
+        })
+
+        pipeline.push({
+            $facet: {
+                results: [
+                    {$skip: (pageNum - 1) * limitNum},
+                    {$limit: limitNum}
+                ],
+                totalCount: [{$count: "count"}]
+            }
+        })
+
+        const [aggResult] = await profileModel.aggregate(pipeline);
+        const results = aggResult?.results ?? [];
+        const total = aggResult?.totalCount?.[0]?.count ?? 0;
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                players: results,
+                pagination: {
+                    page: pageNum,
+                    limit: limitNum,
+                    total,
+                    totalPages: Math.ceil(total / limitNum)
+                }
+            }
+        })
+
+
+    } catch (error) {
+        console.error("Browse Players Error:", error)
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error occured."
         })
     }
 }

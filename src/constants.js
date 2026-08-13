@@ -80,3 +80,13 @@ export const SCOUT_REQUIRED_FIELDS = [
   "city",
   "phoneNumber",
 ];
+
+export const AGE_GROUP_RANGES = {
+  U15: { min: 0, max: 15 },
+  U17: { min: 16, max: 17 },
+  U20: { min: 18, max: 20 },
+  Senior: { min: 21, max: 200 },
+};
+ 
+export const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+ 

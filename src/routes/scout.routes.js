@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { protect } from "../middleware/auth.middleware.js";
 import { uploadDocument } from "../middleware/upload-document.middleware.js";
-import { completeScoutProfile, uploadProofOfAffiliation, getScoutProfile, updateScoutingInterest } from "../controllers/scout.controller.js";
+import { completeScoutProfile, uploadProofOfAffiliation, getScoutProfile, updateScoutingInterest, browsePlayers } from "../controllers/scout.controller.js";
 
 const router = Router();
 
@@ -440,5 +440,118 @@ router.patch(
  *               message: "Internal server error occurred."
  */
 router.patch("/profile/interests", protect, updateScoutingInterest);
+
+/**
+ * @swagger
+ * /scout/players/browse:
+ *   get:
+ *     tags:
+ *       - Scout - Player Browsing
+ *     summary: Browse approved players
+ *     description: >
+ *       Returns a paginated list of approved, publicly visible player
+ *       profiles for the authenticated scout to browse. Supports
+ *       filtering by position, age group, nationality, availability for
+ *       trials, and a name search. Only a limited, non-sensitive set of
+ *       fields is returned (no medical information, coach contact
+ *       details, or social links).
+ *
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Case-insensitive partial match against the player's first or last name.
+ *         example: "David"
+ *       - in: query
+ *         name: positions
+ *         schema:
+ *           type: string
+ *         description: >
+ *           Comma-separated list of positions. Matches either the player's
+ *           primaryPosition or secondaryPosition.
+ *         example: "Striker,Winger"
+ *       - in: query
+ *         name: ageGroups
+ *         schema:
+ *           type: string
+ *         description: >
+ *           Comma-separated list of age group buckets, computed from the
+ *           player's dateOfBirth. Valid values: U15, U17, U20, Senior.
+ *         example: "U17,U20"
+ *       - in: query
+ *         name: nationality
+ *         schema:
+ *           type: string
+ *         description: Case-insensitive partial match against nationality.
+ *         example: "Nigerian"
+ *       - in: query
+ *         name: availableForTrialsOnly
+ *         schema:
+ *           type: string
+ *           enum: ["true", "false"]
+ *         description: If "true", only returns players with isAvailableForTrials set to true.
+ *         example: "true"
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number, 1-indexed.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 12
+ *         description: Results per page. Capped at 50.
+ *
+ *     responses:
+ *       200:
+ *         description: Paginated list of matching players.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 players:
+ *                   - _id: "68912f4c3d9f2a5f2b5b7b12"
+ *                     firstName: "David"
+ *                     lastName: "Okoro"
+ *                     profileImage: "https://res.cloudinary.com/demo/image/upload/v1/zscouts/profile-images/david.jpg"
+ *                     primaryPosition: "Striker"
+ *                     secondaryPosition: "Winger"
+ *                     age: 17
+ *                     nationality: "Nigerian"
+ *                     state: "Lagos"
+ *                     city: "Ikeja"
+ *                     currentClubOrAcademy: "Future Stars Academy"
+ *                     isAvailableForTrials: true
+ *                     willingToRelocate: false
+ *                 pagination:
+ *                   page: 1
+ *                   limit: 12
+ *                   total: 42
+ *                   totalPages: 4
+ *
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Unauthorized."
+ *
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Internal server error occurred."
+ */
+router.get("/players/browse", protect, browsePlayers);
 
 export default router;
