@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { protect } from "../middleware/auth.middleware.js";
 import { uploadDocument } from "../middleware/upload-document.middleware.js";
-import { completeScoutProfile, uploadProofOfAffiliation, getScoutProfile, updateScoutingInterest, browsePlayers } from "../controllers/scout.controller.js";
+import { completeScoutProfile, uploadProofOfAffiliation, getScoutProfile, updateScoutingInterest, browsePlayers, getShortlst, toggleShortlist, getPlayerDetail } from "../controllers/scout.controller.js";
 
 const router = Router();
 
@@ -553,5 +553,265 @@ router.patch("/profile/interests", protect, updateScoutingInterest);
  *               message: "Internal server error occurred."
  */
 router.get("/players/browse", protect, browsePlayers);
+
+/**
+ * @swagger
+ * /scout/players/{playerId}:
+ *   get:
+ *     tags:
+ *       - Scout - Player Browsing
+ *     summary: Get a single player's full detail
+ *     description: >
+ *       Retrieves the full public profile for a single approved player,
+ *       along with their approved videos and whether the authenticated
+ *       scout has this player on their shortlist.
+ *
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: path
+ *         name: playerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The player's user ID.
+ *
+ *     responses:
+ *       200:
+ *         description: Player detail retrieved successfully.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 player:
+ *                   _id: "68912f4c3d9f2a5f2b5b7b12"
+ *                   firstName: "David"
+ *                   lastName: "Okoro"
+ *                 profile:
+ *                   profileImage: "https://res.cloudinary.com/demo/image/upload/v1/zscouts/profile-images/david.jpg"
+ *                   coverImage: "https://res.cloudinary.com/demo/image/upload/v1/zscouts/cover-images/david-cover.jpg"
+ *                   bio: "Pacey striker with an eye for goal."
+ *                   primaryPosition: "Striker"
+ *                   secondaryPosition: "Winger"
+ *                   preferredFoot: "Right"
+ *                   currentClubOrAcademy: "Future Stars Academy"
+ *                   height: 178
+ *                   weight: 68
+ *                   footballBio: "Started playing at age 8, captain of U17 side."
+ *                   isAvailableForTrials: true
+ *                   willingToRelocate: false
+ *                   nationality: "Nigerian"
+ *                   state: "Lagos"
+ *                   city: "Ikeja"
+ *                   socialLinks:
+ *                     instagram: "https://instagram.com/davidokoro"
+ *                 videos:
+ *                   - title: "Match Highlights vs Rivers United"
+ *                     description: "Full 90 minutes, 2 goals."
+ *                     videoUrl: "https://res.cloudinary.com/demo/video/upload/v1/zscouts/videos/highlight1.mp4"
+ *                     thumbnailUrl: "https://res.cloudinary.com/demo/image/upload/v1/zscouts/thumbnails/highlight1.jpg"
+ *                     duration: 320
+ *                     view: 154
+ *                     createdAt: "2026-07-20T09:00:00.000Z"
+ *                 isShortlisted: true
+ *
+ *       400:
+ *         description: Invalid player ID.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Invalid player ID"
+ *
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Unauthorized."
+ *
+ *       404:
+ *         description: No approved, publicly visible player found for this ID.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Player not found"
+ *
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Internal server eror occurred"
+ */
+router.get("/players/:playerId", protect, getPlayerDetail);
+
+/**
+ * @swagger
+ * /scout/players/{playerId}/shortlist:
+ *   patch:
+ *     tags:
+ *       - Scout - Player Browsing
+ *     summary: Toggle a player on/off the scout's shortlist
+ *     description: >
+ *       Adds the player to the authenticated scout's shortlist if they
+ *       aren't already on it, or removes them if they are. The player
+ *       must have an approved, publicly visible profile.
+ *
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: path
+ *         name: playerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The player's user ID.
+ *
+ *     responses:
+ *       200:
+ *         description: Player added to or removed from the shortlist.
+ *         content:
+ *           application/json:
+ *             examples:
+ *               added:
+ *                 summary: Player added
+ *                 value:
+ *                   success: true
+ *                   message: "Player added to shortlist"
+ *                   data:
+ *                     isShortlisted: true
+ *               removed:
+ *                 summary: Player removed
+ *                 value:
+ *                   success: true
+ *                   message: "Player removed from shortlist"
+ *                   data:
+ *                     isShortlisted: false
+ *
+ *       400:
+ *         description: Invalid player ID.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Invalid playerid"
+ *
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Unauthorized."
+ *
+ *       404:
+ *         description: No approved, publicly visible player found for this ID.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Player not found."
+ *
+ *       409:
+ *         description: Concurrent request already shortlisted this player.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Player is already on your shortlist."
+ *
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Internal server error occurred."
+ */
+router.patch("/players/:playerId/shortlist", protect, toggleShortlist);
+
+/**
+ * @swagger
+ * /scout/shortlist:
+ *   get:
+ *     tags:
+ *       - Scout - Player Browsing
+ *     summary: Get the scout's shortlisted players
+ *     description: >
+ *       Returns a paginated list of players the authenticated scout has
+ *       shortlisted, ordered by the date they were shortlisted (oldest
+ *       first). Each entry includes a summary of the player's profile.
+ *
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number, 1-indexed.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 12
+ *         description: Results per page. Capped at 50.
+ *
+ *     responses:
+ *       200:
+ *         description: Paginated list of shortlisted players.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 shortlist:
+ *                   - shortlistedAt: "2026-08-01T12:00:00.000Z"
+ *                     note: "Strong left foot, worth a follow-up."
+ *                     player:
+ *                       _id: "68912f4c3d9f2a5f2b5b7b12"
+ *                       firstName: "David"
+ *                       lastName: "Okoro"
+ *                     profile:
+ *                       profileImage: "https://res.cloudinary.com/demo/image/upload/v1/zscouts/profile-images/david.jpg"
+ *                       primaryPosition: "Striker"
+ *                       currentClubOrAcademy: "Future Stars Academy"
+ *                       nationality: "Nigerian"
+ *                       city: "Ikeja"
+ *                       isAvailableForTrials: true
+ *                       profileStatus: "approved"
+ *                 pagination:
+ *                   page: 1
+ *                   limit: 12
+ *                   total: 8
+ *                   totalPages: 1
+ *
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Unauthorized."
+ *
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Internal server error occurred."
+ */
+router.get("/shortlist", protect, getShortlst);
+
 
 export default router;

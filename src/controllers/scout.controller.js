@@ -1,7 +1,10 @@
 import { SCOUT_ALLOWED_FIELDS, SCOUT_REQUIRED_FIELDS, SENSITIVE_FIELDS, escapeRegex, AGE_GROUP_RANGES } from "../constants.js";
+import { playerModel } from "../models/player/player.model.js";
 import { profileModel } from "../models/player/profile.model.js";
+import { videoModel } from "../models/player/video.model.js";
 import { scoutProfileModel } from "../models/scout/profile.model.js";
 import { scoutModel } from "../models/scout/scout.model.js";
+import { shortlistModel } from "../models/scout/shortlist.model.js";
 import { uploadToCloudinary } from "../utils/uploadToCloudnary.js";
 
 export const completeScoutProfile = async (req, res) => {
@@ -406,15 +409,15 @@ export const browsePlayers = async (req, res) => {
                     as: "player"
                 }
             },
-            {$unwind: "$player"}
+            { $unwind: "$player" }
         )
 
         if (search) {
             pipeline.push({
                 $match: {
                     $or: [
-                        {"player.firstName": {$regex: escapeRegex(search.trim()), $options: "i"}},
-                        {"player.lastName": {$regex: escapeRegex(search.trim()), $options: "i"}}
+                        { "player.firstName": { $regex: escapeRegex(search.trim()), $options: "i" } },
+                        { "player.lastName": { $regex: escapeRegex(search.trim()), $options: "i" } }
                     ]
                 }
             })
@@ -422,7 +425,7 @@ export const browsePlayers = async (req, res) => {
 
         pipeline.push({
             $project: {
-                _id: 1,
+                _id: "$user",
                 firstName: "$player.firstName",
                 lastName: "$player.lastName",
                 profileImage: 1,
@@ -441,10 +444,10 @@ export const browsePlayers = async (req, res) => {
         pipeline.push({
             $facet: {
                 results: [
-                    {$skip: (pageNum - 1) * limitNum},
-                    {$limit: limitNum}
+                    { $skip: (pageNum - 1) * limitNum },
+                    { $limit: limitNum }
                 ],
-                totalCount: [{$count: "count"}]
+                totalCount: [{ $count: "count" }]
             }
         })
 
@@ -472,6 +475,233 @@ export const browsePlayers = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Internal server error occured."
+        })
+    }
+}
+
+export const getPlayerDetail = async (req, res) => {
+    try {
+        const scoutId = req.user.id;
+        const { playerId } = req.params;
+
+        const profile = await profileModel.findOne({
+            user: playerId,
+            profileStatus: "approved",
+            visibility: "public"
+        })
+
+        if (!profile) {
+            return res.status(404).json({
+                success: false,
+                message: "Player not found"
+            })
+        }
+
+        const player = await playerModel
+            .findById(playerId)
+            .select("firstName lastName");
+
+        if (!player) {
+            return res.status(404).json({
+                success: false,
+                message: "Player not found.",
+            });
+        }
+
+        const videos = await videoModel
+            .find({ player: playerId, status: "approved", isDeleted: false })
+            .select("title description videoUrl thumbnailUrl duration view createdAt")
+            .sort({ createdAt: -1 })
+
+
+        const shortlistEntry = await shortlistModel.findOne({
+            scout: scoutId,
+            player: playerId
+        })
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                player: {
+                    _id: player._id,
+                    firstName: player.firstName,
+                    lastName: player.lastName,
+                },
+                profile: {
+                    profileImage: profile.profileImage,
+                    coverImage: profile.coverImage,
+                    bio: profile.bio,
+                    primaryPosition: profile.primaryPosition,
+                    secondaryPosition: profile.secondaryPosition,
+                    preferredFoot: profile.preferredFoot,
+                    currentClubOrAcademy: profile.currentClubOrAcademy,
+                    height: profile.height,
+                    weight: profile.weight,
+                    footballBio: profile.footballBio,
+                    isAvailableForTrials: profile.isAvailableForTrials,
+                    willingToRelocate: profile.willingToRelocate,
+                    nationality: profile.nationality,
+                    state: profile.state,
+                    city: profile.city,
+                    socialLinks: profile.socialLinks
+                },
+                videos,
+                isShortlisted: !!shortlistEntry
+            }
+        })
+
+    } catch (error) {
+        console.error("Get Player Detail Error:", error);
+
+        if (error.name === "CastError") {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid player ID"
+            })
+        }
+    }
+
+    return res.status(500).json({
+        success: false,
+        message: "Internal server eror occurred"
+    })
+}
+
+export const toggleShortlist = async (req, res) => {
+    try {
+        const scoutId = req.user.id;
+        const { playerId } = req.params
+
+        const profile = await profileModel.findOne({
+            user: playerId,
+            profileStatus: "approved",
+            visibility: "public"
+        })
+
+        if (!profile) {
+            return res.status(404).json({
+                success: false,
+                message: "Player not found."
+            })
+        }
+
+        const existing = await shortlistModel.findOne({
+            scout: scoutId,
+            player: playerId
+        })
+
+        if (existing) {
+            await shortlistModel.deleteOne({ _id: existing._id });
+            return res.status(200).json({
+                success: true,
+                message: "Player removed from shortlist",
+                data: { isShortlisted: false }
+            })
+        }
+        await shortlistModel.create({ scout: scoutId, player: playerId });
+
+        return res.status(200).json({
+            success: true,
+            message: "Player added to shortlist",
+            data: { isShortlisted: true }
+        })
+
+    } catch (error) {
+        console.error("Toggle Shortlist Error:", error)
+
+        if (error.name === "CastError") {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid playerid"
+            })
+        }
+
+        if (error.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: "Player is already on your shortlist."
+            })
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error occurred."
+        })
+    }
+}
+
+export const getShortlst = async (req, res) => {
+    try {
+        const scoutId = req.user.id;
+        const { page = 1, limit = 12 } = req.query
+
+        const pageNum = Math.max(parseInt(page) || 1, 1)
+        const limitNum = Math.min(Math.max(parseInt(limit) || 12, 1), 50)
+
+        const [entries, total] = await Promise.all([
+            shortlistModel
+                .find({ scout: scoutId })
+                .sort({ createdAt: 1 })
+                .skip((pageNum - 1) * limitNum)
+                .limit(limitNum),
+            shortlistModel.countDocuments({ scout: scoutId })
+        ])
+
+        const playerIds = entries.map((e) => e.player);
+
+        const [profiles, players] = await Promise.all([
+            profileModel.find({ user: { $in: playerIds } }),
+            playerModel.find({ _id: { $in: playerIds } }).select("firstName lastName")
+        ])
+
+        const profileByUserId = new Map(profiles.map((p) => [p.user.toString(), p]))
+        const playerById = new Map(players.map((p) => [p._id.toString(), p]))
+
+        const results = entries.map((entry) => {
+            const id = entry.player.toString();
+            const profile = profileByUserId.get(id);
+            const player = playerById.get(id)
+
+            return {
+                shortlistedAt: entry.createdAt,
+                note: entry.note,
+                player: player
+                    ? {
+                        _id: player._id, firstName: player.firstName, lastName: player.latName
+                    } : null,
+                profile: profile
+                    ? {
+                        profileImage: profile.profileImage,
+                        primaryPosition: profile.primaryPosition,
+                        currentClubOrAcademy: profile.currentClubOrAcademy,
+                        nationality: profile.nationality,
+                        city: profile.city,
+                        isAvailableForTrials: profile.isAvailableForTrials,
+                        profileStatus: profile.profileStatus
+                    } : null
+            }
+        })
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                shortlist: results,
+                pagination: {
+                    page: pageNum,
+                    limit: limitNum,
+                    total,
+                    totalPages: Math.ceil(total / limitNum)
+                }
+            }
+        })
+
+
+
+    } catch (error) {
+         console.error("Fetch Shortlist Error:", error)
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error occurred."
         })
     }
 }
