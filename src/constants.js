@@ -90,3 +90,8 @@ export const AGE_GROUP_RANGES = {
  
 export const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  
+export const ROLE_TO_RECIPIENT_MODEL = {
+  player: "players",
+  scout: "scouts",
+  admin: "admins"
+}

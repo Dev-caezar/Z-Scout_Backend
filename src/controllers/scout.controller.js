@@ -1,4 +1,5 @@
 import { SCOUT_ALLOWED_FIELDS, SCOUT_REQUIRED_FIELDS, SENSITIVE_FIELDS, escapeRegex, AGE_GROUP_RANGES } from "../constants.js";
+import { notificationModel } from "../models/player/notification.model.js";
 import { playerModel } from "../models/player/player.model.js";
 import { profileModel } from "../models/player/profile.model.js";
 import { videoModel } from "../models/player/video.model.js";
@@ -599,6 +600,14 @@ export const toggleShortlist = async (req, res) => {
             })
         }
         await shortlistModel.create({ scout: scoutId, player: playerId });
+
+        await notificationModel.create({
+            reciepent: playerId,
+            reciepientModel: "players",
+            type: "shortlisted",
+            message: "A scout has shortlisted your profile",
+            relatedEntityId: profile._id
+        })
 
         return res.status(200).json({
             success: true,
