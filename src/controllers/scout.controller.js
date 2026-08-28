@@ -602,7 +602,7 @@ export const toggleShortlist = async (req, res) => {
         await shortlistModel.create({ scout: scoutId, player: playerId });
 
         await notificationModel.create({
-            reciepent: playerId,
+            recipient: playerId,
             reciepientModel: "players",
             type: "shortlisted",
             message: "A scout has shortlisted your profile",
@@ -707,7 +707,7 @@ export const getShortlst = async (req, res) => {
 
 
     } catch (error) {
-         console.error("Fetch Shortlist Error:", error)
+        console.error("Fetch Shortlist Error:", error)
         return res.status(500).json({
             success: false,
             message: "Internal server error occurred."

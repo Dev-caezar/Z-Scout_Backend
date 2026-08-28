@@ -3,7 +3,7 @@ import { required } from "zod/mini";
 
 const notificationSchema = new mongoose.Schema(
     {
-        reciepent: {
+        recipient: {
             type: mongoose.Schema.Types.ObjectId,
             required: true,
             refPath: "reciepientModel",
@@ -16,7 +16,7 @@ const notificationSchema = new mongoose.Schema(
         type: {
             type: String,
             required: true,
-            enum:[
+            enum: [
                 "shortlisted",
                 "profile_approved",
                 "profile_rejected",
@@ -44,6 +44,6 @@ const notificationSchema = new mongoose.Schema(
     }
 )
 
-notificationSchema.index({recipient: 1, createdAt: -1});
+notificationSchema.index({ recipient: 1, createdAt: -1 });
 
 export const notificationModel = mongoose.model("notifications", notificationSchema)
