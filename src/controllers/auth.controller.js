@@ -7,6 +7,7 @@ import { generateOTP } from "../utils/generateOtp.js";
 import { sendOtpEmail } from "../service/otpService.js";
 import { comparePassword } from "../utils/comparePassword.js";
 import { generateAccessToken, generateRefreshToken } from "../utils/jwt.js";
+import { adminModel } from "../models/admin/admin.model.js";
 
 export const register = async (req, res) => {
   let user;
@@ -135,6 +136,70 @@ export const register = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error?.message || "Internal server error occurred.",
+    });
+  }
+};
+
+export const createAdmin = async (req, res) => {
+  try {
+    const creatorId = req.user.id;
+    const { firstName, lastName, email, password } = req.body;
+
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required.",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const passwordRegex =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password must be at least 8 characters long and contain an uppercase letter, lowercase letter, number and special character.",
+      });
+    }
+
+    const existing = await adminModel.findOne({ email: normalizedEmail });
+
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "An admin account with this email already exists.",
+      });
+    }
+
+    const hashed = await hashPassword(password);
+
+    const admin = await adminModel.create({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: normalizedEmail,
+      password: hashed,
+      createdBy: creatorId,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Admin account created successfully.",
+      data: {
+        id: admin._id,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+        email: admin.email,
+      },
+    });
+  } catch (error) {
+    console.error("Create Admin Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error occurred.",
     });
   }
 };
@@ -300,11 +365,12 @@ export const login = async (req, res) => {
       });
     }
 
-    const [player, scout] = await Promise.all([
+    const [player, scout, admin] = await Promise.all([
       playerModel.findOne({ email: normalizedEmail }),
       scoutModel.findOne({ email: normalizedEmail }),
+      adminModel.findOne({ email: normalizedEmail }),
     ]);
-    const user = player ?? scout;
+    const user = player ?? scout ?? admin;
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -357,7 +423,7 @@ export const login = async (req, res) => {
     console.error("Login Controller Error:", error);
     return res.status(500).json({
       success: false,
-      message: error?.message || "Internal server error occurred.",
+      message: "Internal server error occurred.",
     });
   }
 };

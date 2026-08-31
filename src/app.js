@@ -9,6 +9,7 @@ import authRouter from "./routes/auth.routes.js";
 import playerRouter from "./routes/player.routes.js";
 import scoutRouter from "./routes/scout.routes.js";
 import notificationRouter from "./routes/notifications.routes.js"
+import adminRouter from "./routes/admin.routes.js"
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/player", playerRouter);
 app.use("/api/v1/scout", scoutRouter);
 app.use("/api/v1/notifications", notificationRouter)
+app.use("/api/vi/admin", adminRouter)
 
 app.use((req, res) => {
   res.status(404).json({

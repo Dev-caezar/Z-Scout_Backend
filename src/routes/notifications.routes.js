@@ -157,7 +157,7 @@ router.get("/", protect, getNotificaions);
  *               success: false
  *               message: "Internal server error occurred."
  */
-router.patch("/notifications/:notificationId/read", protect, markNotificationAsRead);
+router.patch("/:notificationId/read", protect, markNotificationAsRead);
 
 /**
  * @swagger
