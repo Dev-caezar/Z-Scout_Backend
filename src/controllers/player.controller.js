@@ -12,13 +12,13 @@ import cloudinary from "../config/cloudinary.js"; // ✅
 import streamifier from "streamifier";
 import { uploadToCloudinary } from "../utils/uploadToCloudnary.js";
 import { videoModel } from "../models/player/video.model.js";
-import { success } from "zod";
+import { adminModel } from "../models/admin/admin.model.js";
+import { notificationModel } from "../models/notification/notification.model.js";
 
 export const completeProfile = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // Ensure the requester is actually a player account
     const player = await playerModel
       .findOne({ _id: userId, role: "player" })
       .select(SENSITIVE_FIELDS);
@@ -29,13 +29,8 @@ export const completeProfile = async (req, res) => {
         message: "Player not found.",
       });
     }
-
-    // Find existing profile, if any (do NOT create it yet — creating with
-    // only `user` set would fail schema validation since most fields are
-    // required)
     let playerProfile = await profileModel.findOne({ user: userId });
 
-    // Prevent editing after approval
     if (playerProfile?.profileStatus === "approved") {
       return res.status(400).json({
         success: false,
@@ -43,7 +38,6 @@ export const completeProfile = async (req, res) => {
       });
     }
 
-    // Check for unknown fields
     const unknownFields = Object.keys(req.body).filter(
       (field) => !allowedFields.includes(field),
     );
@@ -55,7 +49,6 @@ export const completeProfile = async (req, res) => {
       });
     }
 
-    // Validate required fields
     for (const field of requiredFields) {
       const value = req.body[field];
 
@@ -71,7 +64,6 @@ export const completeProfile = async (req, res) => {
       }
     }
 
-    // Validate nested objects
     for (const field of NESTED_FIELDS) {
       if (
         req.body[field] !== undefined &&
@@ -84,12 +76,10 @@ export const completeProfile = async (req, res) => {
       }
     }
 
-    // Build a fresh unsaved instance if this is the user's first submission
     if (!playerProfile) {
       playerProfile = new profileModel({ user: userId });
     }
 
-    // Apply updates
     allowedFields.forEach((field) => {
       if (req.body[field] === undefined) return;
 
@@ -103,18 +93,32 @@ export const completeProfile = async (req, res) => {
       }
     });
 
-    // Reset review state
     playerProfile.profileStatus = "submitted";
     playerProfile.reviewedBy = undefined;
     playerProfile.reviewedAt = undefined;
     playerProfile.rejectionReason = "";
 
-    // Mark account profile as completed (i.e. submitted at least once —
-    // does not imply approved)
+
     player.profileCompleted = true;
 
-    // Save both
     await Promise.all([player.save(), playerProfile.save()]);
+    try {
+      const admins = await adminModel.find().select("_id");
+
+      if (admins.length) {
+        await notificationModel.insertMany(
+          admins.map((admin) => ({
+            recipient: admin._id,
+            reciepientModel: "admins",
+            type: "profile_submitted",
+            message: `${player.firstName} ${player.lastName} submitted a player profile for review.`,
+            relatedEntityId: playerProfile._id
+          }))
+        )
+      }
+    } catch (notifyError) {
+      console.error("Admin Notify Error (profile submission):", notifyError)
+    }
 
     return res.status(200).json({
       success: true,
@@ -143,7 +147,6 @@ export const completeProfile = async (req, res) => {
       });
     }
 
-    // Duplicate profile creation race (two concurrent first-time submits)
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
@@ -287,7 +290,6 @@ export const uploadPlayerVideo = async (req, res) => {
       });
     }
 
-    // multer (uploadVideo.single("video")) attaches the file here
     const file = req.file;
 
     if (!file) {

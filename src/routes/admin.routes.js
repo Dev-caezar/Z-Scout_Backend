@@ -8,6 +8,11 @@ import {
     getPendingScoutProfiles,
     approveScoutProfile,
     rejectScoutProfile,
+    getAdminNotifications,
+    getAdminUnreadCount,
+    markAllNotificationAsRead,
+    markNotificationRead,
+    getDashboardStats,
 } from "../controllers/adminReview.controller.js";
 import { createAdmin } from "../controllers/auth.controller.js";
 
@@ -16,9 +21,9 @@ const router = Router();
 // Every route here requires BOTH a valid token (protect) AND an admin role
 // (requireAdmin) — layered in that order so an invalid/missing token
 // always produces 401 before role is even checked.
+router.post("/create", createAdmin);
 router.use(protect, requireAdmin);
 
-router.post("/create", createAdmin);
 
 /**
  * @swagger
@@ -545,5 +550,361 @@ router.patch("/scouts/:scoutId/approve", approveScoutProfile);
  *               message: "Internal server error occurred."
  */
 router.patch("/scouts/:scoutId/reject", rejectScoutProfile);
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Notification:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           example: "66fa1c2e8b1e4a0012a3f9d1"
+ *         recipient:
+ *           type: string
+ *           description: ObjectId of the recipient (player, scout, or admin)
+ *           example: "66fa1c2e8b1e4a0012a3f9c0"
+ *         reciepientModel:
+ *           type: string
+ *           enum: [players, scouts, admins]
+ *           example: admins
+ *         type:
+ *           type: string
+ *           enum:
+ *             - shortlisted
+ *             - profile_approved
+ *             - profile_rejected
+ *             - profile_submitted
+ *             - video_approved
+ *             - video_rejected
+ *             - video_commented
+ *           example: profile_submitted
+ *         message:
+ *           type: string
+ *           maxLength: 300
+ *           example: "John Doe submitted a player profile for review."
+ *         isRead:
+ *           type: boolean
+ *           default: false
+ *         relatedEntityId:
+ *           type: string
+ *           description: ObjectId of the related profile/video/entity
+ *           example: "66fa1c2e8b1e4a0012a3f9e2"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *
+ *     Pagination:
+ *       type: object
+ *       properties:
+ *         page:
+ *           type: integer
+ *           example: 1
+ *         limit:
+ *           type: integer
+ *           example: 20
+ *         total:
+ *           type: integer
+ *           example: 42
+ *         totalPages:
+ *           type: integer
+ *           example: 3
+ *
+ *   parameters:
+ *     notificationIdParam:
+ *       in: path
+ *       name: notificationId
+ *       required: true
+ *       schema:
+ *         type: string
+ *       description: MongoDB ObjectId of the notification
+ */
+
+/**
+ * @swagger
+ * /admin/notifications:
+ *   get:
+ *     summary: Get paginated notifications for the logged-in admin
+ *     tags: [Admin Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number (1-indexed)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 50
+ *         description: Results per page (capped at 50)
+ *       - in: query
+ *         name: isRead
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *         description: Filter by read status. Omit to return both.
+ *     responses:
+ *       200:
+ *         description: List of notifications for the current admin
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     notifications:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Notification'
+ *                     unreadCount:
+ *                       type: integer
+ *                       example: 5
+ *                     pagination:
+ *                       $ref: '#/components/schemas/Pagination'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/notifications", getAdminNotifications)
+
+/**
+ * @swagger
+ * /admin/notifications/unread-count:
+ *   get:
+ *     summary: Get the unread notification count for the logged-in admin
+ *     tags: [Admin Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Unread count retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     unreadCount:
+ *                       type: integer
+ *                       example: 5
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/notifications/unread-count", getAdminUnreadCount)
+
+/**
+ * @swagger
+ * /admin/notifications/{notificationId}/read:
+ *   patch:
+ *     summary: Mark a single notification as read
+ *     tags: [Admin Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/notificationIdParam'
+ *     responses:
+ *       200:
+ *         description: Notification marked as read
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Notification marked as read.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     notification:
+ *                       $ref: '#/components/schemas/Notification'
+ *       400:
+ *         description: Invalid notification ID
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Notification not found (or does not belong to this admin)
+ *       500:
+ *         description: Internal server error
+ */
+router.patch("/notifications/:notificationId/read", markNotificationRead)
+
+/**
+ * @swagger
+ * /admin/notifications/read-all:
+ *   patch:
+ *     summary: Mark all of the logged-in admin's unread notifications as read
+ *     tags: [Admin Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All unread notifications marked as read
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: All notifications marked as read.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     modifiedCount:
+ *                       type: integer
+ *                       example: 5
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Internal server error
+ */
+router.patch("/notifications/read-all", markAllNotificationAsRead)
+
+/**
+ * @swagger
+ * /admin/dashboard/stats:
+ *   get:
+ *     summary: Get aggregate stats for the admin dashboard
+ *     description: >
+ *       Returns player and scout counts (total, pending review, approved,
+ *       rejected, new today, new this week — rolling 7 days), a combined
+ *       pending-review total, and the logged-in admin's unread
+ *       notification count.
+ *     tags: [Admin Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard stats retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     players:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 128
+ *                         pendingReview:
+ *                           type: integer
+ *                           example: 6
+ *                         approved:
+ *                           type: integer
+ *                           example: 110
+ *                         rejected:
+ *                           type: integer
+ *                           example: 12
+ *                         newToday:
+ *                           type: integer
+ *                           example: 3
+ *                         newThisWeek:
+ *                           type: integer
+ *                           example: 14
+ *                     scouts:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 34
+ *                         pendingReview:
+ *                           type: integer
+ *                           example: 2
+ *                         approved:
+ *                           type: integer
+ *                           example: 29
+ *                         rejected:
+ *                           type: integer
+ *                           example: 3
+ *                         newToday:
+ *                           type: integer
+ *                           example: 1
+ *                         newThisWeek:
+ *                           type: integer
+ *                           example: 5
+ *                     pendingReviewTotal:
+ *                       type: integer
+ *                       example: 8
+ *                     unreadNotifications:
+ *                       type: integer
+ *                       example: 5
+ *             example:
+ *               success: true
+ *               data:
+ *                 players:
+ *                   total: 128
+ *                   pendingReview: 6
+ *                   approved: 110
+ *                   rejected: 12
+ *                   newToday: 3
+ *                   newThisWeek: 14
+ *                 scouts:
+ *                   total: 34
+ *                   pendingReview: 2
+ *                   approved: 29
+ *                   rejected: 3
+ *                   newToday: 1
+ *                   newThisWeek: 5
+ *                 pendingReviewTotal: 8
+ *                 unreadNotifications: 5
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Unauthorized."
+ *       403:
+ *         description: Authenticated user is not an admin.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Admin access required."
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: false
+ *               message: "Internal server error occurred."
+ */
+router.get("/dashboard/stats", getDashboardStats);
 
 export default router;

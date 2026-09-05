@@ -1,5 +1,6 @@
 import { SCOUT_ALLOWED_FIELDS, SCOUT_REQUIRED_FIELDS, SENSITIVE_FIELDS, escapeRegex, AGE_GROUP_RANGES } from "../constants.js";
-import { notificationModel } from "../models/player/notification.model.js";
+import { adminModel } from "../models/admin/admin.model.js";
+import { notificationModel } from "../models/notification/notification.model.js";
 import { playerModel } from "../models/player/player.model.js";
 import { profileModel } from "../models/player/profile.model.js";
 import { videoModel } from "../models/player/video.model.js";
@@ -105,6 +106,23 @@ export const completeScoutProfile = async (req, res) => {
         scout.profileCompleted = true;
 
         await Promise.all([scout.save(), scoutProfile.save()]);
+        try {
+            const admins = await adminModel.find().select("_id");
+
+            if (admins.length) {
+                await notificationModel.insertMany(
+                    admins.map((admin) => ({
+                        recipient: admin._id,
+                        reciepientModel: "admins",
+                        type: "profile_submitted",
+                        message: `${scout.firstName} ${scout.lastName} submitted a scout profile for review.`,
+                        relatedEntityId: scoutProfile._id
+                    }))
+                )
+            }
+        } catch (notifyError) {
+            console.error("Admin Notify Error (profile submission):", notifyError)
+        }
 
         return res.status(200).json({
             success: true,
