@@ -20,6 +20,7 @@ const notificationSchema = new mongoose.Schema(
                 "shortlisted",
                 "profile_approved",
                 "profile_rejected",
+                "profile_submitted",
                 "video_approved",
                 "video_rejected",
                 "video_commented",
