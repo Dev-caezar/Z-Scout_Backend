@@ -384,7 +384,7 @@ export const getAdminNotifications = async (req, res) => {
         const { page = 1, limit = 20, isRead } = req.query;
 
         const pageNum = Math.max(parseInt(page) || 1, 1)
-        const limitNum = Math.mim(Math.max(parseInt(limit) || 20, 1), 50);
+        const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 50);
 
         const filter = { recipient: adminId, reciepientModel: "admins" };
         if (isRead === "true") {
