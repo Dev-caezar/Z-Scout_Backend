@@ -39,7 +39,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/player", playerRouter);
 app.use("/api/v1/scout", scoutRouter);
 app.use("/api/v1/notifications", notificationRouter)
-app.use("/api/vi/admin", adminRouter)
+app.use("/api/v1/admin", adminRouter)
 
 app.use((req, res) => {
   res.status(404).json({
