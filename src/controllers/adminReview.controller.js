@@ -548,12 +548,14 @@ export const getDashboardStats = async (req, res) => {
             scoutModel.countDocuments({ role: "scout" }),
             profileModel.countDocuments({ profileStatus: "submitted" }),
             scoutProfileModel.countDocuments({ profileStatus: "submitted" }),
+            profileModel.countDocuments({ profileStatus: "approved" }),
+            scoutProfileModel.countDocuments({ profileStatus: "approved" }),
             profileModel.countDocuments({ profileStatus: "rejected" }),
             scoutProfileModel.countDocuments({ profileStatus: "rejected" }),
-            profileModel.countDocuments({ role: "player", createdAt: { $gte: startOfToday } }),
-            scoutProfileModel.countDocuments({ role: "scout", createdAt: { $gte: startOfToday } }),
-            profileModel.countDocuments({ role: "player", createdAt: { $gte: startOfWeek } }),
-            scoutProfileModel.countDocuments({ role: "scout", createdAt: { $gte: startOfWeek } }),
+            playerModel.countDocuments({ role: "player", createdAt: { $gte: startOfToday } }),
+            scoutModel.countDocuments({ role: "scout", createdAt: { $gte: startOfToday } }),
+            playerModel.countDocuments({ role: "player", createdAt: { $gte: startOfWeek } }),
+            scoutModel.countDocuments({ role: "scout", createdAt: { $gte: startOfWeek } }),
             notificationModel.countDocuments({
                 recipient: adminId,
                 reciepientModel: "admins",
@@ -562,7 +564,7 @@ export const getDashboardStats = async (req, res) => {
         ])
 
         return res.status(200).json({
-            sucess: true,
+            success: true,
             data: {
                 players: {
                     total: totalPlayers,
