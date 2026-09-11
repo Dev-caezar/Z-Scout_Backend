@@ -8,15 +8,13 @@ import { scoutModel } from "../models/scout/scout.model.js";
 
 export const getPlayerProfiles = async (req, res) => {
     try {
-        const { page = 1, limit = 20, status = "submitted" } = req.query;
+        const { page = 1, limit = 20, status } = req.query;
         const pageNum = Math.max(parseInt(page) || 1, 1);
         const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 50);
-
         const validStatus = ["draft", "submitted", "approved", "rejected"]
-
         const filter = {};
 
-        if (status !== "all") {
+        if (status) {
             if (!validStatus.includes(status)) {
                 return res.status(400).json({
                     success: false,
@@ -285,13 +283,13 @@ export const rejectPlayerProfile = async (req, res) => {
 
 export const getScoutProfiles = async (req, res) => {
     try {
-        const { page = 1, limit = 20 } = req.query;
+        const { page = 1, limit = 20, status } = req.query;
         const pageNum = Math.max(parseInt(page) || 1, 1)
         const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 50)
         const validStatus = ["draft", "submitted", "approved", "rejected"]
         const filter = {};
 
-        if (status !== "all") {
+        if (status) {
             if (!validStatus.includes(status)) {
                 return res.status(400).json({
                     success: false,
