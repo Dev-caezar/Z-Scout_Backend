@@ -1,21 +1,35 @@
+import { success } from "zod";
 import { notificationModel } from "../models/notification/notification.model.js";
 import { playerModel } from "../models/player/player.model.js";
 import { profileModel } from "../models/player/profile.model.js";
+import { videoModel } from "../models/player/video.model.js";
 import { scoutProfileModel } from "../models/scout/profile.model.js";
 import { scoutModel } from "../models/scout/scout.model.js";
 
-export const getPendingPlayerProfiles = async (req, res) => {
+export const getPlayerProfiles = async (req, res) => {
     try {
-        const { page = 1, limit = 20 } = req.query;
+        const { page = 1, limit = 20, status = "submitted" } = req.query;
         const pageNum = Math.max(parseInt(page) || 1, 1);
         const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 50);
 
-        const filter = { profileStatus: "submitted" };
+        const validStatus = ["draft", "submitted", "approved", "rejected"]
+
+        const filter = {};
+
+        if (status !== "all") {
+            if (!validStatus.includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid status "${status}". Must be one of: "${validStatus.join(", ")},  or "all".`
+                })
+            }
+            filter.profileStatus = status;
+        }
 
         const [profiles, total] = await Promise.all([
             profileModel
                 .find(filter)
-                .sort({ updatedAt: 1 })
+                .sort({ updatedAt: -1 })
                 .skip((pageNum - 1) * limitNum)
                 .limit(limitNum),
             profileModel.countDocuments(filter)
@@ -55,6 +69,87 @@ export const getPendingPlayerProfiles = async (req, res) => {
             success: false,
             message: "Internal server error occured."
         })
+    }
+}
+
+export const getPlayerDetailsForAdmin = async (req, res) => {
+    try {
+        const { playerId } = req.para.$gte
+        const profile = await profileModel.findOne({ user: playerId })
+
+        if (!profile) {
+            return res.status(404).json({
+                success: false,
+                message: "Player not found"
+            })
+        }
+
+        const player = await playerModel
+            .findById(playerId)
+            .select("firstName lastName email")
+
+        if (!player) {
+            return res.status(400).json({
+                success: false,
+                message: "Player not found"
+            })
+        }
+
+        const videos = await videoModel
+            .find({ player: playerId, isDeleted: false })
+            .select("title description videoUrl thumbnailUrl duration view status createdAt")
+            .sort({ createdAt: -1 })
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                player: {
+                    _id: player._id,
+                    firstName: player.firstName,
+                    lastname: player.lastName,
+                    email: player.email
+                },
+                profile: {
+                    profileStatus: profile.profileStatus,
+                    rejectionReason: profile.rejectionReason,
+                    reviewedBy: profile.reviewedBy,
+                    reviewAt: profile.reviewedAt,
+                    submittedAt: profile.updatedAt,
+                    profileImage: profile.profileImage,
+                    coverImage: profile.coverImage,
+                    bio: profile.bio,
+                    primaryPosition: profile.primaryPosition,
+                    secondaryPosition: profile.secondaryPosition,
+                    preferredFoot: profile.preferredFoot,
+                    currentClubOrAcademy: profile.currentClubOrAcademy,
+                    height: profile.height,
+                    weight: profile.weight,
+                    footballBio: profile.footballBio,
+                    isAvailableForTrials: profile.isAvailableForTrials,
+                    willingToRelocate: profile.willingToRelocate,
+                    nationality: profile.nationality,
+                    state: profile.state,
+                    city: profile.city,
+                    socialLinks: profile.socialLinks
+                },
+                videos
+            }
+        })
+    } catch (error) {
+        console.error("Get Player Detail For Admin Error:", error);
+
+        if (error.name === "CastError") {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid player ID"
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error occurred"
+        });
+
     }
 }
 
@@ -187,13 +282,23 @@ export const rejectPlayerProfile = async (req, res) => {
 }
 
 
-export const getPendingScoutProfiles = async (req, res) => {
+export const getScoutProfiles = async (req, res) => {
     try {
         const { page = 1, limit = 20 } = req.query;
         const pageNum = Math.max(parseInt(page) || 1, 1)
         const limitNum = Math.min(Math.max(parseInt(limit) || 20, 1), 50)
+        const validStatus = ["draft", "submitted", "approved", "rejected"]
+        const filter = {};
 
-        const filter = { profileStatus: "submitted" };
+        if (status !== "all") {
+            if (!validStatus.includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid status "${status}". Must be one of: "${validStatus.join(", ")},  or "all".`
+                })
+            }
+            filter.profileStatus = status;
+        }
 
         const [profiles, total] = await Promise.all([
             scoutProfileModel
@@ -243,6 +348,87 @@ export const getPendingScoutProfiles = async (req, res) => {
         })
     }
 }
+
+export const getScoutDetailForAdmin = async (req, res) => {
+    try {
+        const { scoutId } = req.params;
+
+        const profile = await scoutProfileModel.findOne({ user: scoutId });
+
+        if (!profile) {
+            return res.status(404).json({
+                success: false,
+                message: "Scout not found"
+            });
+        }
+
+        const scout = await scoutModel
+            .findById(scoutId)
+            .select("firstName lastName username email isVerified isActive createdAt");
+
+        if (!scout) {
+            return res.status(404).json({
+                success: false,
+                message: "Scout not found.",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                scout: {
+                    _id: scout._id,
+                    firstName: scout.firstName,
+                    lastName: scout.lastName,
+                    username: scout.username,
+                    email: scout.email,
+                    isVerified: scout.isVerified,
+                    isActive: scout.isActive,
+                    createdAt: scout.createdAt,
+                },
+                profile: {
+                    profileStatus: profile.profileStatus,
+                    rejectionReason: profile.rejectionReason,
+                    reviewedBy: profile.reviewedBy,
+                    reviewedAt: profile.reviewedAt,
+                    submittedAt: profile.updatedAt,
+                    profileImage: profile.profileImage,
+                    bio: profile.bio,
+                    isIndependent: profile.isIndependent,
+                    organizationName: profile.organizationName,
+                    title: profile.title,
+                    yearsOfExperience: profile.yearsOfExperience,
+                    nationality: profile.nationality,
+                    state: profile.state,
+                    city: profile.city,
+                    regionsCovered: profile.regionsCovered,
+                    phoneNumber: profile.phoneNumber,
+                    proofOfAffiliation: profile.proofOfAffiliation,
+                    ageGroupsOfInterest: profile.ageGroupsOfInterest,
+                    positionsOfInterest: profile.positionsOfInterest,
+                    referenceLink: profile.referenceLink,
+                    linkedIn: profile.linkedIn,
+                    visibility: profile.visibility,
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error("Get Scout Detail For Admin Error:", error);
+
+        if (error.name === "CastError") {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid scout ID"
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error occurred"
+        });
+    }
+};
 
 export const approveScoutProfile = async (req, res) => {
     try {

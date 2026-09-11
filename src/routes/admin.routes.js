@@ -2,10 +2,8 @@ import { Router } from "express";
 import { protect } from "../middleware/auth.middleware.js";
 import { requireAdmin } from "../middleware/requireAdmin.middleware.js";
 import {
-    getPendingPlayerProfiles,
     approvePlayerProfile,
     rejectPlayerProfile,
-    getPendingScoutProfiles,
     approveScoutProfile,
     rejectScoutProfile,
     getAdminNotifications,
@@ -13,6 +11,8 @@ import {
     markAllNotificationAsRead,
     markNotificationRead,
     getDashboardStats,
+    getPlayerProfiles,
+    getScoutProfiles,
 } from "../controllers/adminReview.controller.js";
 import { createAdmin } from "../controllers/auth.controller.js";
 
@@ -27,7 +27,7 @@ router.use(protect, requireAdmin);
 
 /**
  * @swagger
- * /admin/players/pending:
+ * /admin/players:
  *   get:
  *     tags:
  *       - Admin - Player Review
@@ -101,7 +101,7 @@ router.use(protect, requireAdmin);
  *               success: false
  *               message: "Internal server error occurred."
  */
-router.get("/players/pending", getPendingPlayerProfiles);
+router.get("/players", getPlayerProfiles);
 
 /**
  * @swagger
@@ -286,7 +286,7 @@ router.patch("/players/:playerId/reject", rejectPlayerProfile);
 
 /**
  * @swagger
- * /admin/scouts/pending:
+ * /admin/scouts:
  *   get:
  *     tags:
  *       - Admin - Scout Review
@@ -365,7 +365,7 @@ router.patch("/players/:playerId/reject", rejectPlayerProfile);
  *               success: false
  *               message: "Internal server error occurred."
  */
-router.get("/scouts/pending", getPendingScoutProfiles);
+router.get("/scouts", getScoutProfiles);
 
 /**
  * @swagger
