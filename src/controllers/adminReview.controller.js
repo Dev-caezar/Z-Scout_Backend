@@ -45,6 +45,7 @@ export const getPlayerProfiles = async (req, res) => {
         const results = profiles.map((profile) => ({
             profileId: profile._id,
             player: playerById.get(profile.user.toString()) ?? null,
+            profileStatus: profile.profileStatus,
             primaryPosition: profile.primaryPosition,
             nationality: profile.nationality,
             city: profile.city,
@@ -319,6 +320,7 @@ export const getScoutProfiles = async (req, res) => {
         const results = profiles.map((profile) => ({
             profileId: profile._id,
             scout: scoutById.get(profile.user.toString()) ?? null,
+            profileStatus: profile.profileStatus,
             isIndependent: profile.isIndependent,
             organizationName: profile.organizationName,
             title: profile.title,
